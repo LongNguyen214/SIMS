@@ -41,6 +41,7 @@
                                 <th>Course</th>
                                 <th>Subject</th>
                                 <th>Semester</th>
+                                <th>Date</th>
                                 <th>Lecturer</th>
 
                                 @if (isAdmin)
@@ -56,6 +57,7 @@
                                     <td>@cs.Course?.Name</td>
                                     <td>@cs.Subject?.Name</td>
                                     <td>@cs.Semester?.Name</td>
+                                    <td>@cs.Date.ToString("yyyy-MM-dd")</td>
                                     <td>@cs.Lecturer?.UserName</td>
 
                                     @if (isAdmin)

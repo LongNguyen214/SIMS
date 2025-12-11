@@ -2,6 +2,7 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Identity
 @using SIMS.Data
+@using System
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
 @inject UserManager<ApplicationUser> UserManager
@@ -77,8 +78,15 @@
                                 <ValidationMessage For="() => Schedule.LecturerId" class="text-danger" />
                             </div>
                         </div>
-                        
-                        
+
+                        <div class="mb-3 row">
+                            <label for="date" class="col-sm-3 col-form-label text-end">Date:</label>
+                            <div class="col-sm-9">
+                                <InputDate id="date" @bind-Value="Schedule.Date" class="form-control" />
+                                <ValidationMessage For="() => Schedule.Date" class="text-danger" />
+                            </div>
+                        </div>
+
                         <div class="mt-4 d-flex justify-content-end">
                             <a class="btn classic-btn-secondary me-2" href="/schedules">Cancel</a>
                             <button type="submit" class="btn classic-btn-primary">Create</button>
@@ -93,7 +101,7 @@
 
 @code {
     [SupplyParameterFromForm]
-    private ClassSchedule Schedule { get; set; } = new();
+    private ClassSchedule Schedule { get; set; } = new() { Date = DateTime.Today };
 
     private List<Course> Courses { get; set; } = new();
     private List<Subject> Subjects { get; set; } = new();

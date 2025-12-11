@@ -13,7 +13,6 @@
         <div class="card-header classic-header d-flex justify-content-between align-items-center">
             <div>
                 <h4 class="mb-0">Transcripts</h4>
-                <small class="text-muted">Classic view</small>
             </div>
 
             @if (isAdmin)
@@ -39,6 +38,7 @@
                             <tr>
                                 <th>Student</th>
                                 <th>Subject</th>
+                                <th>Course</th>
                                 <th>Total Score</th>
                                 @if (isAdmin)
                                 {
@@ -52,6 +52,7 @@
                                 <tr>
                                     <td>@t.StudentName</td>
                                     <td>@t.SubjectName</td>
+                                    <td>@t.CourseName</td>
                                     <td>@t.TotalScore</td>
 
                                     @if (isAdmin)

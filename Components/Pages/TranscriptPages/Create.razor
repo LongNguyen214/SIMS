@@ -56,6 +56,20 @@
                         </div>
 
                         <div class="mb-3 row">
+                            <label for="courseid" class="col-sm-3 col-form-label text-end">Course:</label>
+                            <div class="col-sm-9">
+                                <InputSelect id="courseid" @bind-Value="TranscriptModel.CourseId" class="form-select">
+                                    <option value="0">-- Select course --</option>
+                                    @foreach (var c in Courses)
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="() => TranscriptModel.CourseId" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
                             <label for="totalscore" class="col-sm-3 col-form-label text-end">Total Score:</label>
                             <div class="col-sm-9">
                                 <InputNumber id="totalscore" @bind-Value="TranscriptModel.TotalScore" class="form-control" />
@@ -80,14 +94,13 @@
 
     private List<Subject> Subjects { get; set; } = new();
     private List<ApplicationUser> Users { get; set; } = new();
+    private List<Course> Courses { get; set; } = new();
 
     private async Task AddTranscript()
     {
         using var context = DbFactory.CreateDbContext();
 
-        // Ensure non-null StudentId to satisfy DB NOT NULL constraint
         TranscriptModel.StudentId = TranscriptModel.StudentId ?? string.Empty;
-        // Populate student name from selected user if empty
         if (string.IsNullOrWhiteSpace(TranscriptModel.StudentName) && !string.IsNullOrEmpty(TranscriptModel.StudentId))
         {
             var user = await context.Users.FindAsync(TranscriptModel.StudentId);
@@ -96,6 +109,9 @@
 
         var subject = await context.Subjects.FindAsync(TranscriptModel.SubjectId);
         TranscriptModel.SubjectName = subject?.Name ?? string.Empty;
+
+        var course = await context.Courses.FindAsync(TranscriptModel.CourseId);
+        TranscriptModel.CourseName = course?.Name ?? string.Empty;
 
         context.Transcripts.Add(TranscriptModel);
         await context.SaveChangesAsync();
@@ -107,12 +123,12 @@
         using var context = DbFactory.CreateDbContext();
         Subjects = await context.Subjects.AsNoTracking().ToListAsync();
         Users = await context.Users.AsNoTracking().ToListAsync();
+        Courses = await context.Courses.AsNoTracking().ToListAsync();
     }
 
     private void StudentChanged(ChangeEventArgs e)
     {
         var selectedId = e?.Value?.ToString();
-        // Update bound StudentId explicitly (binding should do it, but ensure value)
         TranscriptModel.StudentId = selectedId ?? string.Empty;
 
         if (string.IsNullOrEmpty(selectedId))
@@ -122,6 +138,6 @@
         }
 
         var user = Users.FirstOrDefault(u => u.Id == selectedId);
-        // TranscriptModel.StudentName = user?.Name ?? user?.UserName ?? string.Empty;
+        TranscriptModel.StudentName = user?.Name ?? user?.UserName ?? string.Empty;
     }
 }

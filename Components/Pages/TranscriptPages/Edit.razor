@@ -57,6 +57,20 @@
                             </div>
 
                             <div class="mb-3 row">
+                                <label for="courseid" class="col-sm-3 col-form-label text-end">Course:</label>
+                                <div class="col-sm-9">
+                                    <InputSelect id="courseid" @bind-Value="TranscriptModel.CourseId" class="form-select">
+                                        <option value="0">-- Select course --</option>
+                                        @foreach (var c in Courses)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => TranscriptModel.CourseId" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3 row">
                                 <label for="totalscore" class="col-sm-3 col-form-label text-end">Total Score:</label>
                                 <div class="col-sm-9">
                                     <InputNumber id="totalscore" @bind-Value="TranscriptModel.TotalScore" class="form-control" />
@@ -83,6 +97,7 @@
     private Transcript? TranscriptModel { get; set; }
 
     private List<Subject> Subjects { get; set; } = new();
+    private List<Course> Courses { get; set; } = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -96,6 +111,7 @@
         }
 
         Subjects = await context.Subjects.AsNoTracking().ToListAsync();
+        Courses = await context.Courses.AsNoTracking().ToListAsync();
     }
 
     private async Task UpdateTranscript()
@@ -103,6 +119,9 @@
         using var context = DbFactory.CreateDbContext();
         var subject = await context.Subjects.FindAsync(TranscriptModel!.SubjectId);
         TranscriptModel.SubjectName = subject?.Name ?? string.Empty;
+
+        var course = await context.Courses.FindAsync(TranscriptModel.CourseId);
+        TranscriptModel.CourseName = course?.Name ?? string.Empty;
 
         context.Attach(TranscriptModel!).State = EntityState.Modified;
         await context.SaveChangesAsync();
