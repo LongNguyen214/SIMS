@@ -1,0 +1,106 @@
+﻿@page "/schedules"
+@using Microsoft.EntityFrameworkCore
+@using SIMS.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Class Schedules</PageTitle>
+<link href="/css/classic.css" rel="stylesheet" />
+
+<div class="container classic-page mt-4">
+    <div class="card classic-card shadow-sm">
+        <div class="card-header classic-header d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="mb-0">Class Schedules</h4>
+            </div>
+
+            @if (isAdmin)
+            {
+                <a class="btn classic-btn-primary" href="/schedules/create">Create New</a>
+            }
+
+        </div>
+        <div class="card-body">
+            @if (isLoading)
+            {
+                <p><em>Loading...</em></p>
+            }
+            else if (Schedules.Count == 0)
+            {
+                <div class="alert alert-info">No class schedules found.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered classic-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Course</th>
+                                <th>Subject</th>
+                                <th>Semester</th>
+                                <th>Lecturer</th>
+
+                                @if (isAdmin)
+                                {
+                                    <th style="width:200px">Actions</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cs in Schedules)
+                            {
+                                <tr>
+                                    <td>@cs.Course?.Name</td>
+                                    <td>@cs.Subject?.Name</td>
+                                    <td>@cs.Semester?.Name</td>
+                                    <td>@cs.Lecturer?.UserName</td>
+
+                                    @if (isAdmin)
+                                    {
+                                        <td>
+                                            <a class="btn btn-sm btn-outline-secondary me-1" href="@($"/schedules/details?id={cs.Id}")">Details</a>
+                                            <a class="btn btn-sm btn-outline-primary me-1" href="@($"/schedules/edit?id={cs.Id}")">Edit</a>
+                                            <a class="btn btn-sm btn-outline-danger" href="@($"/schedules/delete?id={cs.Id}")">Delete</a>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ClassSchedule> Schedules { get; set; } = new();
+    private bool isLoading = true;
+    private bool isAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            isAdmin = user.IsInRole("Admin");
+        }
+
+        using var context = DbFactory.CreateDbContext();
+        Schedules = await context.ClassSchedules
+            .AsNoTracking()
+            .Include(s => s.Course)
+            .Include(s => s.Subject)
+            .Include(s => s.Semester)
+            .Include(s => s.Lecturer)
+            .OrderBy(s => s.Course.Name)
+            .ToListAsync();
+
+        isLoading = false;
+    }
+}

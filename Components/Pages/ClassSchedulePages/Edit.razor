@@ -1,0 +1,169 @@
+﻿@page "/schedules/edit"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
+@using SIMS.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+
+<PageTitle>Edit Class Schedule</PageTitle>
+<link href="/css/classic.css" rel="stylesheet" />
+
+<div class="container mt-4 classic-page">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card classic-card shadow-sm">
+                <div class="card-header classic-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Edit Class Schedule</h4>
+                    <small class="text-muted">ID: @(SchoolSchedule?.Id ?? 0)</small>
+                </div>
+                <div class="card-body">
+                    @if (SchoolSchedule is null)
+                    {
+                        <p><em>Loading...</em></p>
+                    }
+                    else
+                    {
+                        <EditForm Model="SchoolSchedule" OnValidSubmit="UpdateSchoolSchedule" FormName="edit-school-schedule-form">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger mb-3" />
+
+                            <div class="mb-3 row">
+                                <label for="courseid" class="col-sm-3 col-form-label text-end">Course:</label>
+                                <div class="col-sm-9">
+                                    <InputSelect id="courseid" @bind-Value="SchoolSchedule.CourseId" class="form-select">
+                                        <option value="0">-- Select course --</option>
+                                        @foreach (var course in Courses)
+                                        {
+                                            <option value="@course.Id">@course.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => SchoolSchedule.CourseId" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3 row">
+                                <label for="subjectid" class="col-sm-3 col-form-label text-end">Subject:</label>
+                                <div class="col-sm-9">
+                                    <InputSelect id="subjectid" @bind-Value="SchoolSchedule.SubjectId" class="form-select">
+                                        <option value="0">-- Select subject --</option>
+                                        @foreach (var subject in Subjects)
+                                        {
+                                            <option value="@subject.Id">@subject.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => SchoolSchedule.SubjectId" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3 row">
+                                <label for="semesterid" class="col-sm-3 col-form-label text-end">Semester:</label>
+                                <div class="col-sm-9">
+                                    <InputSelect id="semesterid" @bind-Value="SchoolSchedule.SemesterId" class="form-select">
+                                        <option value="0">-- Select semester --</option>
+                                        @foreach (var semester in Semesters)
+                                        {
+                                            <option value="@semester.Id">@semester.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => SchoolSchedule.SemesterId" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3 row">
+                                <label for="lecturerid" class="col-sm-3 col-form-label text-end">Lecturer:</label>
+                                <div class="col-sm-9">
+                                    <InputSelect id="lecturerid" @bind-Value="SchoolSchedule.LecturerId" class="form-select">
+                                        <option value="">-- Select lecturer --</option>
+                                        @foreach (var lecturer in Lecturers)
+                                        {
+                                            <option value="@lecturer.Id">@lecturer.UserName</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="() => SchoolSchedule.LecturerId" class="text-danger" />
+                                </div>
+                            </div>
+
+                            <div class="mt-4 d-flex justify-content-end">
+                                <a class="btn classic-btn-secondary me-2" href="/schedules">Cancel</a>
+                                <button type="submit" class="btn classic-btn-primary">Save</button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private ClassSchedule? SchoolSchedule { get; set; }
+
+    private List<Course> Courses { get; set; } = new();
+    private List<Subject> Subjects { get; set; } = new();
+    private List<Semester> Semesters { get; set; } = new();
+    private List<ApplicationUser> Lecturers { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        SchoolSchedule ??= await context.ClassSchedules.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (SchoolSchedule is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+
+        Courses = await context.Courses.AsNoTracking().ToListAsync();
+        Subjects = await context.Subjects.AsNoTracking().ToListAsync();
+        Semesters = await context.Semesters.AsNoTracking().ToListAsync();
+
+        var lecturerRole = await RoleManager.FindByNameAsync("Lecture");
+        if (lecturerRole != null)
+        {
+            var lecturerUserIds = await context.UserRoles
+                .Where(ur => ur.RoleId == lecturerRole.Id)
+                .Select(ur => ur.UserId)
+                .ToListAsync();
+
+            Lecturers = await UserManager.Users
+                .Where(u => lecturerUserIds.Contains(u.Id))
+                .ToListAsync();
+        }
+    }
+
+    private async Task UpdateSchoolSchedule()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(SchoolSchedule!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!SchoolScheduleExists(SchoolSchedule!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/schedules");
+    }
+
+    private bool SchoolScheduleExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.ClassSchedules.Any(e => e.Id == id);
+    }
+}

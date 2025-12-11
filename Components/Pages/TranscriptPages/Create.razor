@@ -1,0 +1,127 @@
+@page "/transcripts/create"
+@using Microsoft.EntityFrameworkCore
+@using SIMS.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create Transcript</PageTitle>
+<link href="/css/classic.css" rel="stylesheet" />
+
+<div class="container mt-4 classic-page">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card classic-card border-secondary shadow-sm">
+                <div class="card-header classic-header bg-light">
+                    <h4 class="mb-0">Create Transcript</h4>
+                </div>
+                <div class="card-body">
+                    <EditForm Enhance method="post" Model="TranscriptModel" OnValidSubmit="AddTranscript" FormName="create-transcript-form">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-3" />
+
+                        <div class="mb-3 row">
+                            <label for="studentid" class="col-sm-3 col-form-label text-end">Student:</label>
+                            <div class="col-sm-9">
+                                <InputSelect id="studentid" @bind-Value="TranscriptModel.StudentId" class="form-select" @onchange="StudentChanged">
+                                    <option value="">-- Select student --</option>
+                                    @foreach (var u in Users)
+                                    {
+                                        <option value="@u.Id">@u.Name (@u.UserName)</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="() => TranscriptModel.StudentId" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <label for="studentname" class="col-sm-3 col-form-label text-end">Student Name:</label>
+                            <div class="col-sm-9">
+                                <InputText id="studentname" @bind-Value="TranscriptModel.StudentName" class="form-control" />
+                                <ValidationMessage For="() => TranscriptModel.StudentName" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <label for="subjectid" class="col-sm-3 col-form-label text-end">Subject:</label>
+                            <div class="col-sm-9">
+                                <InputSelect id="subjectid" @bind-Value="TranscriptModel.SubjectId" class="form-select">
+                                    <option value="0">-- Select subject --</option>
+                                    @foreach (var s in Subjects)
+                                    {
+                                        <option value="@s.Id">@s.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="() => TranscriptModel.SubjectId" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <label for="totalscore" class="col-sm-3 col-form-label text-end">Total Score:</label>
+                            <div class="col-sm-9">
+                                <InputNumber id="totalscore" @bind-Value="TranscriptModel.TotalScore" class="form-control" />
+                                <ValidationMessage For="() => TranscriptModel.TotalScore" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-flex justify-content-end">
+                            <a class="btn classic-btn-secondary me-2" href="/transcripts">Cancel</a>
+                            <button type="submit" class="btn classic-btn-primary">Create</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Transcript TranscriptModel { get; set; } = new();
+
+    private List<Subject> Subjects { get; set; } = new();
+    private List<ApplicationUser> Users { get; set; } = new();
+
+    private async Task AddTranscript()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Ensure non-null StudentId to satisfy DB NOT NULL constraint
+        TranscriptModel.StudentId = TranscriptModel.StudentId ?? string.Empty;
+        // Populate student name from selected user if empty
+        if (string.IsNullOrWhiteSpace(TranscriptModel.StudentName) && !string.IsNullOrEmpty(TranscriptModel.StudentId))
+        {
+            var user = await context.Users.FindAsync(TranscriptModel.StudentId);
+            TranscriptModel.StudentName = user?.Name ?? user?.UserName ?? string.Empty;
+        }
+
+        var subject = await context.Subjects.FindAsync(TranscriptModel.SubjectId);
+        TranscriptModel.SubjectName = subject?.Name ?? string.Empty;
+
+        context.Transcripts.Add(TranscriptModel);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/transcripts");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Subjects = await context.Subjects.AsNoTracking().ToListAsync();
+        Users = await context.Users.AsNoTracking().ToListAsync();
+    }
+
+    private void StudentChanged(ChangeEventArgs e)
+    {
+        var selectedId = e?.Value?.ToString();
+        // Update bound StudentId explicitly (binding should do it, but ensure value)
+        TranscriptModel.StudentId = selectedId ?? string.Empty;
+
+        if (string.IsNullOrEmpty(selectedId))
+        {
+            TranscriptModel.StudentName = string.Empty;
+            return;
+        }
+
+        var user = Users.FirstOrDefault(u => u.Id == selectedId);
+        // TranscriptModel.StudentName = user?.Name ?? user?.UserName ?? string.Empty;
+    }
+}

@@ -1,0 +1,132 @@
+﻿@page "/schedules/create"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
+@using SIMS.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+
+<PageTitle>Create Class Schedule</PageTitle>
+<link href="/css/classic.css" rel="stylesheet" />
+
+<div class="container mt-4 classic-page">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card classic-card border-secondary shadow-sm">
+                <div class="card-header classic-small bg-light">
+                    <h4 class="mb-0">Create Class Schedule</h4>
+                </div>
+                <div class="card-body">
+                    <EditForm method="post" Model="Schedule" OnValidSubmit="AddSchedule" FormName="create-class-schedule-form" class="needs-validation" novalidate>
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-3" />
+
+                        <div class="mb-3 row">
+                            <label for="courseid" class="col-sm-3 col-form-label text-end">Course:</label>
+                            <div class="col-sm-9">
+                                <InputSelect id="courseid" @bind-Value="Schedule.CourseId" class="form-select">
+                                    <option value="0">-- Select course --</option>
+                                    @foreach (var c in Courses)
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="() => Schedule.CourseId" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <label for="subjectid" class="col-sm-3 col-form-label text-end">Subject:</label>
+                            <div class="col-sm-9">
+                                <InputSelect id="subjectid" @bind-Value="Schedule.SubjectId" class="form-select">
+                                    <option value="0">-- Select subject --</option>
+                                    @foreach (var s in Subjects)
+                                    {
+                                        <option value="@s.Id">@s.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="() => Schedule.SubjectId" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <label for="semesterid" class="col-sm-3 col-form-label text-end">Semester:</label>
+                            <div class="col-sm-9">
+                                <InputSelect id="semesterid" @bind-Value="Schedule.SemesterId" class="form-select">
+                                    <option value="0">-- Select semester --</option>
+                                    @foreach (var sem in Semesters)
+                                    {
+                                        <option value="@sem.Id">@sem.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="() => Schedule.SemesterId" class="text-danger" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 row">
+                            <label for="lecturerid" class="col-sm-3 col-form-label text-end">Lecturer:</label>
+                            <div class="col-sm-9">
+                                <InputSelect id="lecturerid" @bind-Value="Schedule.LecturerId" class="form-select">
+                                    <option value="">-- Select lecturer --</option>
+                                    @foreach (var lec in Lecturers)
+                                    {
+                                        <option value="@lec.Id">@lec.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="() => Schedule.LecturerId" class="text-danger" />
+                            </div>
+                        </div>
+                        
+                        
+                        <div class="mt-4 d-flex justify-content-end">
+                            <a class="btn classic-btn-secondary me-2" href="/schedules">Cancel</a>
+                            <button type="submit" class="btn classic-btn-primary">Create</button>
+                        </div>
+                        
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private ClassSchedule Schedule { get; set; } = new();
+
+    private List<Course> Courses { get; set; } = new();
+    private List<Subject> Subjects { get; set; } = new();
+    private List<Semester> Semesters { get; set; } = new();
+    private List<ApplicationUser> Lecturers { get; set; } = new();
+
+    private async Task AddSchedule()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.ClassSchedules.Add(Schedule);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/schedules");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        Courses = await context.Courses.AsNoTracking().ToListAsync();
+        Subjects = await context.Subjects.AsNoTracking().ToListAsync();
+        Semesters = await context.Semesters.AsNoTracking().ToListAsync();
+
+        var lecturerRole = await RoleManager.FindByNameAsync("Lecture");
+        if (lecturerRole != null)
+        {
+            var lecturerIds = await context.UserRoles
+                .Where(ur => ur.RoleId == lecturerRole.Id)
+                .Select(ur => ur.UserId)
+                .ToListAsync();
+
+            Lecturers = await UserManager.Users
+                .Where(u => lecturerIds.Contains(u.Id))
+                .ToListAsync();
+        }
+    }
+}

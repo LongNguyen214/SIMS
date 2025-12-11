@@ -1,0 +1,99 @@
+﻿@page "/schedules/delete"
+@using Microsoft.EntityFrameworkCore
+@using SIMS.Data
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Delete Class Schedule</PageTitle>
+<link href="/css/classic.css" rel="stylesheet" />
+
+<div class="container mt-4 classic-page">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card classic-card shadow-sm">
+                <div class="card-header classic-header">
+                    <h4 class="mb-0">Delete Class Schedule</h4>
+                </div>
+                <div class="card-body">
+                    @if (schoolSchedule is null)
+                    {
+                        <p><em>Loading...</em></p>
+                    }
+                    else
+                    {
+                        <dl class="row dl-compact">
+                            <dt class="col-sm-3">Course</dt>
+                            <dd class="col-sm-9">@schoolSchedule.Course?.Name</dd>
+
+                            <dt class="col-sm-3">Subject</dt>
+                            <dd class="col-sm-9">@schoolSchedule.Subject?.Name</dd>
+
+                            <dt class="col-sm-3">Semester</dt>
+                            <dd class="col-sm-9">@schoolSchedule.Semester?.Name</dd>
+
+                            <dt class="col-sm-3">Lecturer</dt>
+                            <dd class="col-sm-9">@schoolSchedule.Lecturer?.UserName</dd>
+                        </dl>
+
+                        <EditForm Model="schoolSchedule" OnValidSubmit="DeleteSchoolSchedule" FormName="delete-school-schedule-form">
+                            <div class="d-flex justify-content-end">
+                                <a class="btn classic-btn-secondary me-2" href="/schedules">Cancel</a>
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? Id { get; set; }
+
+    private ClassSchedule? schoolSchedule;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        using var context = DbFactory.CreateDbContext();
+
+        schoolSchedule = await context.ClassSchedules
+            .Include(s => s.Course)
+            .Include(s => s.Subject)
+            .Include(s => s.Semester)
+            .Include(s => s.Lecturer)
+            .FirstOrDefaultAsync(s => s.Id == Id.Value);
+
+        if (schoolSchedule is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteSchoolSchedule()
+    {
+        if (Id is null)
+            return;
+
+        using var context = DbFactory.CreateDbContext();
+
+        var entity = await context.ClassSchedules.FindAsync(Id.Value);
+        if (entity is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        context.ClassSchedules.Remove(entity);
+        await context.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/schedules");
+    }
+}
